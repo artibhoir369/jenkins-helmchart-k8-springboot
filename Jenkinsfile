@@ -4,7 +4,7 @@ pipeline {
     environment {
         registry = "artibhoir369/springboot-helm-minikube"
         imageName = "spring-boot-web"  // Define the image name
-        dockerHubCredentialsId = "34c63854-b5d3-4cbf-b647-20147c56cdc9" // Docker Hub credentials ID
+        dockerHubCredentialsId = "ec753b7c-6191-43ac-9113-033e1e5c7139" // Docker Hub credentials ID
         helmChartPath = "helm/springboot" // Path to your Helm chart
         helmReleaseName = "springboot-release" // Helm release name
     }
