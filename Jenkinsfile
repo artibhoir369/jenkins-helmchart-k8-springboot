@@ -2,49 +2,69 @@ pipeline {
     agent any
 
     environment {
-        registry = "211223789150.dkr.ecr.us-east-1.amazonaws.com/my-docker-repo"
+        registry = "artibhoir369/springboot-helm-minikube"
+        imageName = "spring-boot-web"  // Define the image name
+        dockerHubCredentialsId = "34c63854-b5d3-4cbf-b647-20147c56cdc9" // Docker Hub credentials ID
+        helmChartPath = "helm/springboot" // Path to your Helm chart
+        helmReleaseName = "springboot-release" // Helm release name
     }
+    
     stages {
         stage('Checkout') {
             steps {
-                checkout scmGit(branches: [[name: '*/master']], extensions: [], userRemoteConfigs: [[url: 'https://github.com/akannan1087/docker-spring-boot']])
+                checkout scmGit(branches: [[name: '*/main']], extensions: [], userRemoteConfigs: [[url: 'https://github.com/artibhoir369/jenkins-helmchart-k8-springboot']])
             }
         }
-        
-        stage ("Build JAR") {
+
+        stage('Build JAR') {
             steps {
-                sh "mvn clean install"
+                sh "mvn clean package"
             }
         }
-        
-        stage ("Build Image") {
+
+        stage('Build Docker Image') {
             steps {
                 script {
-                    docker.build registry
+                    def imageTag = "${env.registry}:${env.BUILD_ID}"
+                    docker.build(imageTag, "-f Dockerfile .")
                 }
             }
         }
-        
-        stage ("Push to ECR") {
+
+        stage('Push Docker Image') {
             steps {
                 script {
-                    sh "aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 211223789150.dkr.ecr.us-east-1.amazonaws.com"
-                    sh "docker push 211223789150.dkr.ecr.us-east-1.amazonaws.com/my-docker-repo:latest"
-                    
+                    withCredentials([usernamePassword(credentialsId: dockerHubCredentialsId, usernameVariable: 'DOCKER_HUB_USERNAME', passwordVariable: 'DOCKER_HUB_PASSWORD')]) {
+                        sh "echo ${DOCKER_HUB_PASSWORD} | docker login -u ${DOCKER_HUB_USERNAME} --password-stdin"
+                    }
+                    def imageTag = "${env.registry}:${env.BUILD_ID}"
+                    sh "docker push ${imageTag}"
                 }
             }
         }
-        
-        stage ("Helm package") {
-            steps {
-                    sh "helm package springboot"
-                }
-            }
-                
-        stage ("Helm install") {
-            steps {
-                    sh "helm upgrade myrelease-21 springboot-0.1.0.tgz"
-                }
-            }
+
+    //     stage('Helm Package') {
+    //         steps {
+    //             script {
+    //                 sh "helm package ${helmChartPath}"
+    //             }
+    //         }
+    //     }
+
+    //     stage('Helm Install/Upgrade') {
+    //         steps {
+    //             script {
+    //                 def chartFile = sh(script: "ls ${helmChartPath}/*.tgz", returnStdout: true).trim()
+    //                 sh "helm upgrade --install ${helmReleaseName} ${chartFile} --namespace default"
+    //             }
+    //         }
+    //     }
+    // }
+    
+    // post {
+    //     always {
+    //         // Clean up Docker images to free up space
+    //         sh "docker system prune -af"
+    //     }
     }
 }
